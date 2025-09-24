@@ -1,0 +1,753 @@
+
+
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Link, useNavigate } from 'react-router-dom';
+import { 
+  MapPin, 
+  Upload, 
+  ChevronRight, 
+  ChevronLeft, 
+  Send,
+  Camera,
+  FileText,
+  Trash2,
+  Waves,
+  Zap,
+  Sparkles
+} from 'lucide-react';
+import { useToast } from '../components/ui/Toast';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import Input from '../components/ui/Input';
+import Map from '../components/maps/Map';
+import { ISSUE_TYPES } from '../utils/constants';
+import { submitReport } from '../services/reportService';
+
+const steps = [
+  {
+    id: 'details',
+    title: 'Issue Details',
+    icon: FileText,
+    color: 'from-pink-500 via-red-500 to-yellow-500',
+    bgColor: 'from-pink-100 to-red-100'
+  },
+  {
+    id: 'location',
+    title: 'Location',
+    icon: MapPin,
+    color: 'from-green-500 via-blue-500 to-purple-500',
+    bgColor: 'from-green-100 to-blue-100'
+  },
+  {
+    id: 'media',
+    title: 'Photos & Media',
+    icon: Camera,
+    color: 'from-purple-500 via-pink-500 to-red-500',
+    bgColor: 'from-purple-100 to-pink-100'
+  },
+];
+
+const ReportIssue = () => {
+  const navigate = useNavigate();
+  const { addToast } = useToast();
+  const [currentStep, setCurrentStep] = useState(0);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    type: '',
+    location: null,
+    images: []
+  });
+  const [loading, setLoading] = useState(false);
+  const [colorPhase, setColorPhase] = useState(0);
+  const [particles, setParticles] = useState([]);
+
+  useEffect(() => {
+    // Continuous color animation
+    const colorInterval = setInterval(() => {
+      setColorPhase(prev => (prev + 1) % 360);
+    }, 50);
+
+    // Create animated particles
+    const newParticles = Array.from({ length: 20 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: Math.random() * 6 + 2,
+      hue: Math.random() * 360,
+      duration: Math.random() * 10 + 5
+    }));
+    setParticles(newParticles);
+
+    return () => clearInterval(colorInterval);
+  }, []);
+
+  const handleNext = () => {
+    if (validateCurrentStep()) {
+      setCurrentStep(prev => prev + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    setCurrentStep(prev => prev - 1);
+  };
+
+  const validateCurrentStep = () => {
+    switch (currentStep) {
+      case 0:
+        if (!formData.title.trim()) {
+          addToast('Please enter a title', 'error');
+          return false;
+        }
+        if (!formData.type) {
+          addToast('Please select an issue type', 'error');
+          return false;
+        }
+        if (!formData.description.trim()) {
+          addToast('Please provide a description', 'error');
+          return false;
+        }
+        return true;
+      case 1:
+        if (!formData.location) {
+          addToast('Please select a location on the map', 'error');
+          return false;
+        }
+        return true;
+      case 2:
+        return true;
+      default:
+        return true;
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setLoading(true);
+      await submitReport(formData);
+      addToast('Issue reported successfully!', 'success');
+      navigate('/track');
+    } catch (error) {
+      addToast(error.message || 'Failed to submit report', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length + formData.images.length > 5) {
+      addToast('Maximum 5 images allowed', 'error');
+      return;
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      images: [...prev.images, ...files]
+    }));
+  };
+
+  const handleRemoveImage = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }));
+  };
+
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 0:
+        return (
+          <div className="space-y-6">
+            <Input
+              label="Title"
+              placeholder="Brief description of the issue"
+              value={formData.title}
+              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+            />
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Issue Type
+              </label>
+              <select
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                value={formData.type}
+                onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
+              >
+                <option value="">Select type</option>
+                {Object.entries(ISSUE_TYPES).map(([key, value]) => (
+                  <option key={key} value={key}>{value}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Description
+              </label>
+              <textarea
+                rows="4"
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+                placeholder="Detailed description of the issue"
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              />
+            </div>
+          </div>
+        );
+
+      case 1:
+        return (
+          <div className="space-y-4">
+            <p className="text-gray-600 dark:text-gray-300">
+              Click on the map to select the issue location
+            </p>
+            <div className="h-[400px] rounded-lg overflow-hidden">
+              <Map
+                onMapClick={(coords) => setFormData(prev => ({ ...prev, location: coords }))}
+                markers={formData.location ? [formData.location] : []}
+              />
+            </div>
+            {formData.location && (
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Selected coordinates: {formData.location.lat.toFixed(6)}, {formData.location.lng.toFixed(6)}
+              </div>
+            )}
+          </div>
+        );
+
+      case 2:
+        return (
+          <div className="space-y-6">
+            <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6">
+              <div className="text-center">
+                <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                <div className="mt-4">
+                  <label className="relative cursor-pointer">
+                    <span className="rounded-md font-medium text-blue-600 hover:text-blue-500">
+                      Upload files
+                    </span>
+                    <input
+                      type="file"
+                      className="sr-only"
+                      multiple
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                    />
+                  </label>
+                  <p className="text-xs text-gray-500">PNG, JPG up to 10MB</p>
+                </div>
+              </div>
+            </div>
+
+            {formData.images.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {formData.images.map((image, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={URL.createObjectURL(image)}
+                      alt={`Upload ${index + 1}`}
+                      className="h-40 w-full object-cover rounded-lg"
+                    />
+                    <button
+                      onClick={() => handleRemoveImage(index)}
+                      className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Dynamic Animated Background */}
+      <motion.div 
+        className="absolute inset-0"
+        animate={{
+          background: [
+            'linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #feca57)',
+            'linear-gradient(90deg, #4ecdc4, #45b7d1, #96ceb4, #feca57, #ff6b6b)',
+            'linear-gradient(135deg, #45b7d1, #96ceb4, #feca57, #ff6b6b, #4ecdc4)',
+            'linear-gradient(180deg, #96ceb4, #feca57, #ff6b6b, #4ecdc4, #45b7d1)',
+            'linear-gradient(225deg, #feca57, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4)',
+            'linear-gradient(270deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #feca57)',
+            'linear-gradient(315deg, #4ecdc4, #45b7d1, #96ceb4, #feca57, #ff6b6b)',
+            'linear-gradient(360deg, #45b7d1, #96ceb4, #feca57, #ff6b6b, #4ecdc4)'
+          ]
+        }}
+        transition={{
+          duration: 8,
+          repeat: Infinity,
+          ease: "linear"
+        }}
+      />
+
+      {/* Floating Particles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {particles.map((particle) => (
+          <motion.div
+            key={particle.id}
+            className="absolute rounded-full opacity-30"
+            style={{
+              width: particle.size,
+              height: particle.size,
+              left: `${particle.x}%`,
+              top: `${particle.y}%`,
+            }}
+            animate={{
+              x: [0, 100, -100, 0],
+              y: [0, -100, 100, 0],
+              scale: [1, 1.5, 0.5, 1],
+              backgroundColor: [
+                `hsl(${particle.hue}, 70%, 60%)`,
+                `hsl(${(particle.hue + 120) % 360}, 70%, 60%)`,
+                `hsl(${(particle.hue + 240) % 360}, 70%, 60%)`,
+                `hsl(${particle.hue}, 70%, 60%)`
+              ],
+              boxShadow: [
+                `0 0 20px hsl(${particle.hue}, 70%, 60%)`,
+                `0 0 40px hsl(${(particle.hue + 120) % 360}, 70%, 60%)`,
+                `0 0 20px hsl(${(particle.hue + 240) % 360}, 70%, 60%)`,
+                `0 0 20px hsl(${particle.hue}, 70%, 60%)`
+              ]
+            }}
+            transition={{
+              duration: particle.duration,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Swinging Wave Effects */}
+      <div className="absolute inset-0 pointer-events-none">
+        <motion.div
+          className="absolute top-0 left-0 w-full h-32 opacity-20"
+          animate={{
+            background: [
+              'linear-gradient(90deg, transparent, #ff6b6b, transparent)',
+              'linear-gradient(90deg, transparent, #4ecdc4, transparent)',
+              'linear-gradient(90deg, transparent, #45b7d1, transparent)',
+              'linear-gradient(90deg, transparent, #96ceb4, transparent)',
+              'linear-gradient(90deg, transparent, #feca57, transparent)'
+            ],
+            x: [-100, window.innerWidth + 100]
+          }}
+          transition={{
+            background: { duration: 2, repeat: Infinity },
+            x: { duration: 4, repeat: Infinity, ease: "easeInOut" }
+          }}
+        />
+        <motion.div
+          className="absolute bottom-0 left-0 w-full h-32 opacity-20"
+          animate={{
+            background: [
+              'linear-gradient(90deg, transparent, #feca57, transparent)',
+              'linear-gradient(90deg, transparent, #ff6b6b, transparent)',
+              'linear-gradient(90deg, transparent, #4ecdc4, transparent)',
+              'linear-gradient(90deg, transparent, #45b7d1, transparent)',
+              'linear-gradient(90deg, transparent, #96ceb4, transparent)'
+            ],
+            x: [window.innerWidth + 100, -100]
+          }}
+          transition={{
+            background: { duration: 2, repeat: Infinity },
+            x: { duration: 6, repeat: Infinity, ease: "easeInOut" }
+          }}
+        />
+      </div>
+
+      <div className="relative z-10 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto">
+          <motion.div
+            animate={{
+              boxShadow: [
+                '0 20px 60px rgba(255, 107, 107, 0.3)',
+                '0 20px 60px rgba(78, 205, 196, 0.3)',
+                '0 20px 60px rgba(69, 183, 209, 0.3)',
+                '0 20px 60px rgba(150, 206, 180, 0.3)',
+                '0 20px 60px rgba(254, 202, 87, 0.3)'
+              ],
+              scale: [1, 1.02, 1],
+              rotateY: [0, 2, -2, 0]
+            }}
+            transition={{
+              boxShadow: { duration: 3, repeat: Infinity },
+              scale: { duration: 4, repeat: Infinity },
+              rotateY: { duration: 6, repeat: Infinity }
+            }}
+            className="backdrop-blur-lg bg-white/20 dark:bg-gray-900/20 rounded-3xl border border-white/30"
+          >
+            <Card>
+              <div className="p-6 relative overflow-hidden">
+                {/* Animated Header */}
+                <motion.div className="relative mb-8">
+                  <motion.div
+                    className="absolute inset-0 opacity-10"
+                    animate={{
+                      background: [
+                        'radial-gradient(circle at 20% 80%, #ff6b6b 0%, transparent 50%)',
+                        'radial-gradient(circle at 80% 20%, #4ecdc4 0%, transparent 50%)',
+                        'radial-gradient(circle at 40% 40%, #45b7d1 0%, transparent 50%)',
+                        'radial-gradient(circle at 60% 80%, #96ceb4 0%, transparent 50%)',
+                        'radial-gradient(circle at 20% 20%, #feca57 0%, transparent 50%)'
+                      ]
+                    }}
+                    transition={{ duration: 4, repeat: Infinity }}
+                  />
+                  
+                  <motion.h1 
+                    className="text-4xl font-bold text-center relative z-10"
+                    animate={{
+                      backgroundImage: [
+                        'linear-gradient(45deg, #ff6b6b, #4ecdc4)',
+                        'linear-gradient(90deg, #4ecdc4, #45b7d1)',
+                        'linear-gradient(135deg, #45b7d1, #96ceb4)',
+                        'linear-gradient(180deg, #96ceb4, #feca57)',
+                        'linear-gradient(225deg, #feca57, #ff6b6b)',
+                        'linear-gradient(270deg, #ff6b6b, #4ecdc4)',
+                        'linear-gradient(315deg, #4ecdc4, #45b7d1)',
+                        'linear-gradient(360deg, #45b7d1, #ff6b6b)'
+                      ]
+                    }}
+                    style={{
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text'
+                    }}
+                    transition={{ duration: 3, repeat: Infinity }}
+                  >
+                    🌊 Report Water Issue 💧
+                  </motion.h1>
+                  
+                  <motion.div 
+                    className="flex justify-center mt-4 space-x-2"
+                    animate={{
+                      scale: [1, 1.1, 1],
+                      rotate: [0, 5, -5, 0]
+                    }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    <Waves className="w-6 h-6 text-blue-500" />
+                    <Sparkles className="w-6 h-6 text-yellow-500" />
+                    <Zap className="w-6 h-6 text-purple-500" />
+                  </motion.div>
+                </motion.div>
+
+            {/* Dynamic Progress Steps */}
+            <motion.div className="mb-8">
+              <div className="flex items-center justify-between relative">
+                {steps.map((step, index) => (
+                  <React.Fragment key={step.id}>
+                    <motion.div 
+                      className="flex flex-col items-center relative"
+                      animate={{
+                        scale: index === currentStep ? [1, 1.2, 1] : 1,
+                        y: index === currentStep ? [0, -5, 0] : 0
+                      }}
+                      transition={{ duration: 1, repeat: Infinity }}
+                    >
+                      <motion.div
+                        className={`w-12 h-12 rounded-full flex items-center justify-center relative overflow-hidden ${
+                          index <= currentStep ? 'text-white' : 'text-gray-500'
+                        }`}
+                        animate={index <= currentStep ? {
+                          background: [
+                            `linear-gradient(45deg, ${step.color.split(' ')[0].split('-')[1]}, ${step.color.split(' ')[2].split('-')[1]})`,
+                            `linear-gradient(90deg, ${step.color.split(' ')[2].split('-')[1]}, ${step.color.split(' ')[4].split('-')[1]})`,
+                            `linear-gradient(135deg, ${step.color.split(' ')[4].split('-')[1]}, ${step.color.split(' ')[0].split('-')[1]})`
+                          ],
+                          boxShadow: [
+                            '0 0 20px rgba(255, 107, 107, 0.5)',
+                            '0 0 30px rgba(78, 205, 196, 0.5)',
+                            '0 0 25px rgba(69, 183, 209, 0.5)'
+                          ],
+                          rotate: [0, 360]
+                        } : {}}
+                        transition={index <= currentStep ? { 
+                          background: { duration: 2, repeat: Infinity },
+                          boxShadow: { duration: 1.5, repeat: Infinity },
+                          rotate: { duration: 8, repeat: Infinity, ease: "linear" }
+                        } : {}}
+                        style={index <= currentStep ? {} : {
+                          backgroundColor: '#6B7280'
+                        }}
+                      >
+                        {index <= currentStep && (
+                          <motion.div
+                            className="absolute inset-0"
+                            animate={{
+                              background: [
+                                'conic-gradient(from 0deg, transparent, rgba(255,255,255,0.3), transparent)',
+                                'conic-gradient(from 120deg, transparent, rgba(255,255,255,0.3), transparent)',
+                                'conic-gradient(from 240deg, transparent, rgba(255,255,255,0.3), transparent)',
+                                'conic-gradient(from 360deg, transparent, rgba(255,255,255,0.3), transparent)'
+                              ]
+                            }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                          />
+                        )}
+                        <motion.div
+                          className="relative z-10"
+                          animate={index === currentStep ? {
+                            scale: [1, 1.3, 1],
+                            rotate: [0, 15, -15, 0]
+                          } : {}}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                        >
+                          <step.icon className="w-6 h-6" />
+                        </motion.div>
+                      </motion.div>
+                      
+                      <motion.span 
+                        className={`mt-2 text-sm font-medium ${
+                          index === currentStep 
+                            ? 'text-transparent bg-clip-text' 
+                            : 'text-gray-600 dark:text-gray-400'
+                        }`}
+                        animate={index === currentStep ? {
+                          backgroundImage: [
+                            'linear-gradient(45deg, #ff6b6b, #4ecdc4)',
+                            'linear-gradient(90deg, #4ecdc4, #45b7d1)',
+                            'linear-gradient(135deg, #45b7d1, #96ceb4)',
+                            'linear-gradient(180deg, #96ceb4, #feca57)',
+                            'linear-gradient(225deg, #feca57, #ff6b6b)'
+                          ]
+                        } : {}}
+                        style={index === currentStep ? {
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          backgroundClip: 'text'
+                        } : {}}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        {step.title}
+                      </motion.span>
+                    </motion.div>
+                    
+                    {index < steps.length - 1 && (
+                      <motion.div
+                        className="flex-1 h-1 mx-4 rounded-full overflow-hidden"
+                        animate={index < currentStep ? {
+                          background: [
+                            'linear-gradient(90deg, #ff6b6b, #4ecdc4)',
+                            'linear-gradient(90deg, #4ecdc4, #45b7d1)',
+                            'linear-gradient(90deg, #45b7d1, #96ceb4)',
+                            'linear-gradient(90deg, #96ceb4, #feca57)',
+                            'linear-gradient(90deg, #feca57, #ff6b6b)'
+                          ]
+                        } : {}}
+                        style={index < currentStep ? {} : {
+                          backgroundColor: '#E5E7EB'
+                        }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        {index < currentStep && (
+                          <motion.div
+                            className="h-full w-full"
+                            animate={{
+                              background: [
+                                'linear-gradient(90deg, rgba(255,255,255,0.3) 0%, transparent 50%, rgba(255,255,255,0.3) 100%)',
+                                'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)'
+                              ],
+                              x: [-100, 100]
+                            }}
+                            transition={{ 
+                              background: { duration: 1, repeat: Infinity },
+                              x: { duration: 2, repeat: Infinity }
+                            }}
+                          />
+                        )}
+                      </motion.div>
+                    )}
+                  </React.Fragment>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Dynamic Step Content */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentStep}
+                initial={{ opacity: 0, x: 50, scale: 0.9 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: -50, scale: 0.9 }}
+                transition={{ duration: 0.5, type: "spring", stiffness: 100 }}
+                className="relative"
+              >
+                <motion.div
+                  className="absolute inset-0 -m-4 rounded-2xl opacity-5"
+                  animate={{
+                    background: [
+                      `linear-gradient(45deg, ${steps[currentStep].color})`,
+                      `linear-gradient(90deg, ${steps[currentStep].color})`,
+                      `linear-gradient(135deg, ${steps[currentStep].color})`,
+                      `linear-gradient(180deg, ${steps[currentStep].color})`
+                    ]
+                  }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                />
+                <div className="relative z-10">
+                  {renderStepContent()}
+                </div>
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Dynamic Navigation */}
+            <motion.div 
+              className="flex justify-between mt-8"
+              animate={{
+                y: [0, -2, 0]
+              }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              {currentStep > 0 && (
+                <motion.div
+                  whileHover={{ 
+                    scale: 1.05,
+                    boxShadow: '0 10px 30px rgba(255, 107, 107, 0.3)'
+                  }}
+                  whileTap={{ scale: 0.95 }}
+                  animate={{
+                    background: [
+                      'linear-gradient(45deg, #ff6b6b, #4ecdc4)',
+                      'linear-gradient(90deg, #4ecdc4, #45b7d1)',
+                      'linear-gradient(135deg, #45b7d1, #96ceb4)',
+                      'linear-gradient(180deg, #96ceb4, #feca57)',
+                      'linear-gradient(225deg, #feca57, #ff6b6b)'
+                    ]
+                  }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                  className="rounded-xl overflow-hidden"
+                >
+                  <Button
+                    variant="outline"
+                    onClick={handlePrevious}
+                    className="bg-transparent border-none text-white font-bold px-6 py-3"
+                  >
+                    <motion.div
+                      animate={{ x: [-2, 0, -2] }}
+                      transition={{ duration: 1, repeat: Infinity }}
+                    >
+                      <ChevronLeft className="w-5 h-5 mr-1" />
+                    </motion.div>
+                    Previous
+                  </Button>
+                </motion.div>
+              )}
+              
+              <div className="ml-auto">
+                {currentStep < steps.length - 1 ? (
+                  <motion.div
+                    whileHover={{ 
+                      scale: 1.05,
+                      boxShadow: '0 10px 30px rgba(78, 205, 196, 0.3)'
+                    }}
+                    whileTap={{ scale: 0.95 }}
+                    animate={{
+                      background: [
+                        'linear-gradient(45deg, #4ecdc4, #45b7d1)',
+                        'linear-gradient(90deg, #45b7d1, #96ceb4)',
+                        'linear-gradient(135deg, #96ceb4, #feca57)',
+                        'linear-gradient(180deg, #feca57, #ff6b6b)',
+                        'linear-gradient(225deg, #ff6b6b, #4ecdc4)'
+                      ]
+                    }}
+                    transition={{ duration: 3, repeat: Infinity }}
+                    className="rounded-xl overflow-hidden"
+                  >
+                    <Button 
+                      onClick={handleNext}
+                      className="bg-transparent border-none text-white font-bold px-6 py-3"
+                    >
+                      Next
+                      <motion.div
+                        animate={{ x: [0, 2, 0] }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                      >
+                        <ChevronRight className="w-5 h-5 ml-1" />
+                      </motion.div>
+                    </Button>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    whileHover={{ 
+                      scale: 1.05,
+                      boxShadow: '0 15px 40px rgba(150, 206, 180, 0.4)'
+                    }}
+                    whileTap={{ scale: 0.95 }}
+                    animate={{
+                      background: [
+                        'linear-gradient(45deg, #96ceb4, #feca57)',
+                        'linear-gradient(90deg, #feca57, #ff6b6b)',
+                        'linear-gradient(135deg, #ff6b6b, #4ecdc4)',
+                        'linear-gradient(180deg, #4ecdc4, #45b7d1)',
+                        'linear-gradient(225deg, #45b7d1, #96ceb4)'
+                      ],
+                      scale: loading ? [1, 1.05, 1] : 1
+                    }}
+                    transition={{ 
+                      background: { duration: 3, repeat: Infinity },
+                      scale: { duration: 0.5, repeat: Infinity }
+                    }}
+                    className="rounded-xl overflow-hidden relative"
+                  >
+                    {loading && (
+                      <motion.div
+                        className="absolute inset-0"
+                        animate={{
+                          background: [
+                            'conic-gradient(from 0deg, transparent, rgba(255,255,255,0.3), transparent)',
+                            'conic-gradient(from 120deg, transparent, rgba(255,255,255,0.3), transparent)',
+                            'conic-gradient(from 240deg, transparent, rgba(255,255,255,0.3), transparent)',
+                            'conic-gradient(from 360deg, transparent, rgba(255,255,255,0.3), transparent)'
+                          ]
+                        }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                      />
+                    )}
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={loading}
+                      isLoading={loading}
+                      className="bg-transparent border-none text-white font-bold px-8 py-3 relative z-10"
+                    >
+                      <motion.div
+                        animate={{ 
+                          rotate: loading ? 360 : 0,
+                          scale: [1, 1.1, 1]
+                        }}
+                        transition={{ 
+                          rotate: { duration: 1, repeat: Infinity, ease: "linear" },
+                          scale: { duration: 1.5, repeat: Infinity }
+                        }}
+                      >
+                        <Send className="w-5 h-5 mr-2" />
+                      </motion.div>
+                      {loading ? 'Sending Magic...' : 'Submit Report'}
+                    </Button>
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        </Card>
+      </motion.div>
+    </div>
+    </div>
+  );
+};
+
+export default ReportIssue;
