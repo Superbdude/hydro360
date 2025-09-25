@@ -1,3 +1,78 @@
+# Node modules (all levels)
+node_modules/
+**/node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime files
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Build outputs
+dist/
+build/
+out/
+.cache/
+.parcel-cache/
+.vite/
+.next/
+.nuxt/
+.turbo/
+.esbuild/
+
+# Vite
+dist/
+
+# Uploads and user-generated content
+uploads/
+**/uploads/
+backend/uploads/
+server/uploads/
+
+# Environment files (do not commit secrets)
+.env
+.env.*
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editors/IDEs
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Vim swap files
+*.swp
+*.swo
+
+# TypeScript build info
+*.tsbuildinfo
+
+# NPM package files
+*.tgz
+
+# Misc
+coverage/
+.idea/
+
+# Keep lockfiles (package-lock.json / yarn.lock) tracked by default
+# If you want to ignore a specific lockfile, add it explicitly above.
 # Logs
 logs
 *.log
